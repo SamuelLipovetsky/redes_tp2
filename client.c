@@ -13,6 +13,7 @@
 #define MAX_CLIENTS 15
 #define MAX_MESSAGE_LENGTH 2048
 
+int my_id = -1;
 void usage(int argc, char **argv)
 {
     printf("usage: %s <server IP> <server port>\n", argv[0]);
@@ -43,6 +44,10 @@ void *receive_thread(void *arg)
         if (res.IdMsg==6){
     
             printf("%s\n",res.Message);
+            if(my_id==-1){
+                my_id=res.IdSender;
+                
+            }
         }
         if (res.IdMsg==4){
             printf("%s\n",res.Message);
@@ -100,10 +105,21 @@ int main(int argc, char **argv)
 
         memset(buf, 0, BUFSZ);
         fgets(buf, BUFSZ - 1, stdin);
-        if(strcmp(buf,"list users")){
+        if(!strcmp(buf,"list users")){
             msg.IdMsg=4;
             to_send =concatenateMessageAttributes(msg);
 
+        }
+        if(!strncmp(buf,"send all",strlen("send all"))){
+            msg.IdMsg=6;
+        
+            char substr[] = "send all";
+            char *pos = strstr(buf, substr);
+            pos += strlen(substr); 
+            strcpy(msg.Message,pos);
+            msg.IdSender=my_id;
+            msg.IdReceiver=NULL;
+            to_send =concatenateMessageAttributes(msg);
         }
         size_t count = send(s, to_send, strlen(to_send), 0);
         if (count != strlen(to_send))

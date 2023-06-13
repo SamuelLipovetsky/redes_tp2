@@ -25,7 +25,7 @@ struct Message
     int IdMsg;
     int IdSender;
     int IdReceiver;
-    char *Message[2048];
+    char Message[2048];
 };
 
 void *receive_thread(void *arg)
@@ -41,7 +41,11 @@ void *receive_thread(void *arg)
         res = createMessageFromAttributes(buf) ;
 
         if (res.IdMsg==6){
-            printf("User %d joined the group! \n", res.IdSender+1);
+    
+            printf("%s\n",res.Message);
+        }
+        if (res.IdMsg==4){
+            printf("%s\n",res.Message);
         }
 
         memset(buf, 0, MAX_MESSAGE_LENGTH);
@@ -55,9 +59,9 @@ int main(int argc, char **argv)
     {
         usage(argc, argv);
     }
-    int my_id = NULL;
+    // int my_id = NULL;
     char buf[BUFSZ];
-    char response[BUFSZ];
+ 
     memset(buf, 0, BUFSZ);
 
     // creating connection
@@ -96,9 +100,13 @@ int main(int argc, char **argv)
 
         memset(buf, 0, BUFSZ);
         fgets(buf, BUFSZ - 1, stdin);
+        if(strcmp(buf,"list users")){
+            msg.IdMsg=4;
+            to_send =concatenateMessageAttributes(msg);
 
-        size_t count = send(s, buf, strlen(buf), 0);
-        if (count != strlen(buf))
+        }
+        size_t count = send(s, to_send, strlen(to_send), 0);
+        if (count != strlen(to_send))
         {
             break;
         }

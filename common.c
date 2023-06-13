@@ -16,14 +16,14 @@ struct Message
     int IdMsg;
     int IdSender;
     int IdReceiver;
-    char *Message[2048];
+    char Message[2048];
 };
 char* concatenateMessageAttributes(struct Message message) {
     static char concatenatedString[3001];  // Buffer with a maximum size of 3000 characters
 
     // Concatenate the attributes into the resulting string
     snprintf(concatenatedString, sizeof(concatenatedString), "%d,%d,%d,%s",
-             message.IdMsg, message.IdSender, message.IdReceiver, message.Message[0]);
+             message.IdMsg, message.IdSender, message.IdReceiver, message.Message);
 
     return concatenatedString;
 }
@@ -49,7 +49,8 @@ struct Message createMessageFromAttributes(const char *attributesString) {
         token = strtok(NULL, ",");
     }
     if (token != NULL) {
-        message.Message[0] = strdup(token);
+        strcpy(message.Message,strdup(token));
+        // message.Message = strdup(token);
     }
 
     return message;

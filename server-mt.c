@@ -36,19 +36,20 @@ struct Message
     int IdMsg;
     int IdSender;
     int IdReceiver;
-    char *Message[2048];
+    char Message[2048];
 };
 
 void *client_thread(void *data)
 {
-      struct Message answer;
-      struct Message msg;
+    struct Message answer;
+    struct Message msg;
     while (1)
     {
         struct client_data *cdata = (struct client_data *)data;
         struct sockaddr *caddr = (struct sockaddr *)(&cdata->storage);
         int port;
         char ip[400];
+        int position_array=0;
         if (caddr->sa_family == AF_INET)
         {
             struct sockaddr_in *caddr_in = (struct sockaddr_in *)caddr;
@@ -66,15 +67,13 @@ void *client_thread(void *data)
 
         char buf[BUFSZ];
         memset(buf, 0, BUFSZ);
-       
+
         recv(cdata->csock, buf, BUFSZ - 1, 0);
-   
-        msg =createMessageFromAttributes(buf) ;
-   
-        int flag_full = 0;
-        
-      
-      
+
+        msg = createMessageFromAttributes(buf);
+
+        // int flag_full = 0;
+
         if (msg.IdMsg == 1)
         {
             answer.IdMsg = 6;
@@ -85,36 +84,60 @@ void *client_thread(void *data)
                     clients_sockets[i] = cdata->csock;
                     clients_port[i] = port;
                     memcpy(clients_ip[i], ip, strlen(ip));
-                    if (i == 14 && clients_port[i] != -1)
-                    {
-                        flag_full = 1;
-                    }
+                    // if (i == 14 && clients_port[i] != -1)
+                    // {
+                    //     flag_full = 1;
+                    // }
                     answer.IdSender = i;
 
-                    printf("User %d added \n", i + 1);
-
+                    printf("User %02d added \n", i + 1);
+                
+                    sprintf(answer.Message, "User %02d joined the group!", i+1);
+                    position_array=i;
                     break;
                 }
             }
 
-            // char response[BUFSZ];
-            char *response =concatenateMessageAttributes(answer);
-            
-            // memset(response, 0, BUFSZ);
-         
+            char *response = concatenateMessageAttributes(answer);
 
-            
             for (int i = 0; i < 15; i++)
             {
                 if (clients_port[i] != -1)
                 {
-
                     int count = send(clients_sockets[i], response, strlen(response) + 1, 0);
-                   
                     if (count != strlen(response) + 1)
                     {
                         logexit("send");
                     }
+                }
+            }
+        }
+        if (msg.IdMsg == 4)
+        {
+            answer.IdMsg = 4;
+     
+            strcpy(answer.Message,"");
+            {
+                int size=15;
+                int resultIndex = 0;
+                for (int i = 0; i < size; i++)
+                {
+                    if (clients_sockets[i] != -1)
+                    {
+                        char indexChar[3];
+                        sprintf(indexChar, "%d ", i+1);
+                        strcat(answer.Message, indexChar);
+                        resultIndex += strlen(indexChar);
+                      
+                    }
+                }
+                char *response = concatenateMessageAttributes(answer);
+                answer.Message[resultIndex - 1] = '\0'; 
+                printf("%s\n",answer.Message);
+                int count = send(cdata->csock, response, strlen(response) + 1, 0);
+                if (count != strlen(response) + 1)
+                {
+                logexit("send");
                 }
             }
         }
@@ -157,8 +180,6 @@ int main(int argc, char **argv)
     {
         logexit("listen");
     }
-
-    // addrtostr(addr, addrstr, BUFSZ);
     for (int i = 0; i < 15; i++)
     {
         clients_port[i] = -1;
@@ -183,7 +204,7 @@ int main(int argc, char **argv)
             logexit("malloc");
         }
         cdata->csock = csock;
-        
+
         memcpy(&(cdata->storage), &cstorage, sizeof(cstorage));
 
         pthread_t tid;

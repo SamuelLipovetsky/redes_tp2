@@ -76,49 +76,68 @@ void *client_thread(void *data)
         // request to join
         if (msg.IdMsg == 1)
         {
-            answer.IdMsg = 6;
-            for (int i = 0; i < 15; i++)
+            //more than 15 clients
+          
+            if (client_count == 15)
             {
-                if (clients_port[i] == -1)
+                answer.IdMsg=7;
+                answer.IdReceiver=-1;
+                answer.IdSender=-1;
+                strcpy(answer.Message,"User limit exceeded");
+                char *response = concatenateMessageAttributes(answer);
+                int count = send(cdata->csock, response, strlen(response) + 1, 0);
+                if (count != strlen(response) + 1)
                 {
-                    clients_sockets[i] = cdata->csock;
-                    clients_port[i] = port;
-                    memcpy(clients_ip[i], ip, strlen(ip));
-                    // if (i == 14 && clients_port[i] != -1)
-                    // {
-                    //     flag_full = 1;
-                    // }
-                    answer.IdSender = i;
-
-                    printf("User %02d added \n", i + 1);
-
-                    sprintf(answer.Message, "User %02d joined the group!", i + 1);
-
-                    break;
+                    logexit("send");
                 }
+                // printf("User %02d remove", msg.IdSender + 1);
+                free(response);
+
             }
-
-            char *response = concatenateMessageAttributes(answer);
-
-            for (int i = 0; i < 15; i++)
+            else
             {
-                if (clients_port[i] != -1)
+                answer.IdMsg = 6;
+                for (int i = 0; i < 15; i++)
                 {
-                    int count = send(clients_sockets[i], response, strlen(response) + 1, 0);
-                    if (count != strlen(response) + 1)
+                    if (clients_port[i] == -1)
                     {
-                        logexit("send");
+                        clients_sockets[i] = cdata->csock;
+                        clients_port[i] = port;
+                        memcpy(clients_ip[i], ip, strlen(ip));
+                        client_count += 1;
+                        answer.IdSender = i;
+
+                        printf("User %02d added \n", i + 1);
+
+                        sprintf(answer.Message, "User %02d joined the group!", i + 1);
+
+                        break;
                     }
                 }
+
+                char *response = concatenateMessageAttributes(answer);
+
+                for (int i = 0; i < 15; i++)
+                {
+                    if (clients_port[i] != -1)
+                    {
+                        int count = send(clients_sockets[i], response, strlen(response) + 1, 0);
+                        if (count != strlen(response) + 1)
+                        {
+                            logexit("send");
+                        }
+                    }
+                }
+                free(response);
             }
         }
         if (msg.IdMsg == 2)
         {
-           
+
             // valid user asked for end of connection
             if (clients_sockets[msg.IdSender] != -1)
             {
-             
+
                 // answer to requester
                 answer.IdSender = -1;
                 answer.IdReceiver = msg.IdSender;
@@ -130,26 +149,27 @@ void *client_thread(void *data)
                 {
                     logexit("send");
                 }
-                
-                //removing client
-                
-                strcpy(clients_ip[answer.IdReceiver],"");
-                clients_port[answer.IdReceiver]=-1;
-                clients_sockets[answer.IdReceiver]=-1;
+                printf("User %02d remove", msg.IdSender + 1);
+                // removing client
+
+                strcpy(clients_ip[answer.IdReceiver], "");
+                clients_port[answer.IdReceiver] = -1;
+                clients_sockets[answer.IdReceiver] = -1;
                 free(response);
-                //answer to other users
-                answer.IdSender=msg.IdSender;
-                answer.IdMsg=2;
-                answer.IdReceiver=-1;
-                sprintf(answer.Message,"User %02d left the group!",msg.IdSender+1);
+                // answer to other users
+                answer.IdSender = msg.IdSender;
+                answer.IdMsg = 2;
+                answer.IdReceiver = -1;
+                client_count -= 1;
+                sprintf(answer.Message, "User %02d left the group!", msg.IdSender + 1);
                 char *users_response = concatenateMessageAttributes(answer);
-                printf("%s --\n",users_response);
+
                 for (int i = 0; i < 15; i++)
                 {
-                    // answers to everyone 
+                    // answers to everyone
                     if (clients_port[i] != -1)
                     {
-                       
+
                         int count = send(clients_sockets[i], users_response, strlen(users_response) + 1, 0);
                         if (count != strlen(users_response) + 1)
                         {
@@ -157,7 +177,7 @@ void *client_thread(void *data)
                         }
                     }
                 }
-            
+
                 free(users_response);
                 break;
             }

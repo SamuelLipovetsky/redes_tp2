@@ -66,6 +66,7 @@ void *receive_thread(void *arg)
         {
             users[res.IdSender]=-1;
             printf("%s \n",res.Message);
+              exit(0);
         }
         if (res.IdMsg == 8)
         {

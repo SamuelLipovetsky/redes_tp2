@@ -35,22 +35,23 @@ void *receive_thread(void *arg)
     char buf[MAX_MESSAGE_LENGTH];
     struct Message res;
     int read_size;
-    
-      while ((read_size = recv(server_socket, buf, MAX_MESSAGE_LENGTH, 0)) > 0) {
-        
 
-        res = createMessageFromAttributes(buf) ;
+    while ((read_size = recv(server_socket, buf, MAX_MESSAGE_LENGTH, 0)) > 0)
+    {
 
-        if (res.IdMsg==6){
-    
-            printf("%s\n",res.Message);
-            if(my_id==-1){
-                my_id=res.IdSender;
-                
+        res = createMessageFromAttributes(buf);
+
+        if (res.IdMsg == 6)
+        {
+            printf("%s\n", res.Message);
+            if (my_id == -1)
+            {
+                my_id = res.IdSender;
             }
         }
-        if (res.IdMsg==4){
-            printf("%s\n",res.Message);
+        if (res.IdMsg == 4)
+        {
+            printf("%s \n", res.Message);
         }
 
         memset(buf, 0, MAX_MESSAGE_LENGTH);
@@ -66,7 +67,7 @@ int main(int argc, char **argv)
     }
     // int my_id = NULL;
     char buf[BUFSZ];
- 
+
     memset(buf, 0, BUFSZ);
 
     // creating connection
@@ -88,45 +89,85 @@ int main(int argc, char **argv)
         logexit("connect");
     }
     struct Message msg;
- 
+
     msg.IdMsg = 1;
-    char *to_send =concatenateMessageAttributes(msg);
-    
-    send(s, to_send, strlen(to_send), 0);
+    char *to_send = concatenateMessageAttributes(msg);
+
 
     pthread_t tid;
     if (pthread_create(&tid, NULL, receive_thread, &s) != 0)
     {
-        
         exit(EXIT_FAILURE);
     }
+
+    send(s, to_send, strlen(to_send) + 1, 0);
+    free(to_send);
     while (1)
     {
 
         memset(buf, 0, BUFSZ);
         fgets(buf, BUFSZ - 1, stdin);
-        if(!strcmp(buf,"list users")){
-            msg.IdMsg=4;
-            to_send =concatenateMessageAttributes(msg);
 
-        }
-        if(!strncmp(buf,"send all",strlen("send all"))){
-            msg.IdMsg=6;
-        
-            char substr[] = "send all";
-            char *pos = strstr(buf, substr);
-            pos += strlen(substr); 
-            strcpy(msg.Message,pos);
-            msg.IdSender=my_id;
-            msg.IdReceiver=NULL;
-            to_send =concatenateMessageAttributes(msg);
-        }
-        size_t count = send(s, to_send, strlen(to_send), 0);
-        if (count != strlen(to_send))
+        if (!strncmp(buf, "list users", strlen("list users")))
         {
-            break;
-        }
+            msg.IdMsg = 4;
+            to_send = concatenateMessageAttributes(msg);
+         
+            size_t count = send(s, to_send, strlen(to_send) + 1, 0);
 
+            if (count != strlen(to_send) + 1)
+            {
+                break;
+            }
+            free(to_send);
+        }
+        else if (!strncmp(buf, "send all", strlen("send all")))
+        {
+            msg.IdMsg = 6;
+
+            char substr[] = "send all ";
+            char *pos = strstr(buf, substr);
+            pos += strlen(substr);
+            strcpy(msg.Message, pos);
+            msg.IdSender = my_id;
+            msg.IdReceiver = -1;
+            to_send = concatenateMessageAttributes(msg);
+          
+            size_t count = send(s, to_send, strlen(to_send) + 1, 0);
+
+            if (count != strlen(to_send) + 1)
+            {
+               
+                break;
+            }
+            free(to_send);
+        }
+        else if (!strncmp(buf, "send to", strlen("send to")))
+        {
+            msg.IdMsg = 6;
+          
+            char substr[] = "send to ";
+            char *pos = strstr(buf, substr);
+            pos += strlen(substr);
+            char temp[2];
+            strncpy(temp, pos, 2);
+            msg.IdReceiver = atoi(temp) - 1;
+
+            pos += 2;
+            strcpy(msg.Message, pos);
+        
+            msg.IdSender = my_id;
+           
+            to_send = concatenateMessageAttributes(msg);
+            printf("%d ----\n",msg.IdReceiver);
+            size_t count = send(s, to_send, strlen(to_send) + 1, 0);
+
+            if (count != strlen(to_send) + 1)
+            {
+                break;
+            }
+            free(to_send);
+        }
     }
 
     exit(EXIT_SUCCESS);

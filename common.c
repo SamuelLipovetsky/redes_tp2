@@ -2,9 +2,8 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-
+#include <time.h>
 #include <arpa/inet.h>
-
 
 void logexit(const char *msg)
 {
@@ -18,38 +17,59 @@ struct Message
     int IdReceiver;
     char Message[2048];
 };
-char* concatenateMessageAttributes(struct Message message) {
-    static char concatenatedString[3001];  // Buffer with a maximum size of 3000 characters
+char *get_current_time()
+{
+    time_t t = time(NULL);
+    struct tm *currentTime = localtime(&t);
 
+    int hours = currentTime->tm_hour;
+    int minutes = currentTime->tm_min;
+
+    // char timeString[8]; // Allocate a string to store the formatted time (including null terminator)
+    char* timeString = malloc(8 * sizeof(char));
+    sprintf(timeString, "[%02d:%02d]", hours, minutes);
+
+    return timeString;
+}
+char *concatenateMessageAttributes(struct Message message)
+{
+    int size = (30+ strlen(message.Message));
+    char* concatenatedString= calloc(size, sizeof(char));
+   
     // Concatenate the attributes into the resulting string
-    snprintf(concatenatedString, sizeof(concatenatedString), "%d,%d,%d,%s",
+    snprintf(concatenatedString, size*sizeof(char), "%d,%d,%d,%s",
              message.IdMsg, message.IdSender, message.IdReceiver, message.Message);
 
     return concatenatedString;
 }
 
-struct Message createMessageFromAttributes(const char *attributesString) {
+struct Message createMessageFromAttributes(const char *attributesString)
+{
     struct Message message;
 
     // Tokenize the attributes string using commas as delimiters
     char *token;
     token = strtok((char *)attributesString, ",");
-    
+
     // Extract and assign the attribute values to the message object
-    if (token != NULL) {
+    if (token != NULL)
+    {
         message.IdMsg = atoi(token);
         token = strtok(NULL, ",");
     }
-    if (token != NULL) {
+    if (token != NULL)
+    {
         message.IdSender = atoi(token);
         token = strtok(NULL, ",");
     }
-    if (token != NULL) {
+    if (token != NULL)
+    {
         message.IdReceiver = atoi(token);
         token = strtok(NULL, ",");
     }
-    if (token != NULL) {
-        strcpy(message.Message,strdup(token));
+    if (token != NULL)
+    {
+        strcpy(message.Message, strdup(token));
         // message.Message = strdup(token);
     }
 
@@ -70,14 +90,14 @@ int addrparse(const char *addrstr, const char *portstr,
         return -1;
     }
 
-    uint16_t port = (uint16_t)atoi(portstr); 
+    uint16_t port = (uint16_t)atoi(portstr);
     if (port == 0)
     {
         return -1;
     }
-    port = htons(port); 
+    port = htons(port);
 
-    struct in_addr inaddr4; 
+    struct in_addr inaddr4;
     if (inet_pton(AF_INET, addrstr, &inaddr4))
     {
         struct sockaddr_in *addr4 = (struct sockaddr_in *)storage;
@@ -87,7 +107,7 @@ int addrparse(const char *addrstr, const char *portstr,
         return 0;
     }
 
-    struct in6_addr inaddr6; 
+    struct in6_addr inaddr6;
     if (inet_pton(AF_INET6, addrstr, &inaddr6))
     {
         struct sockaddr_in6 *addr6 = (struct sockaddr_in6 *)storage;
@@ -110,12 +130,12 @@ returns -1 in case of an error
 int server_sockaddr_init(const char *proto, const char *portstr,
                          struct sockaddr_storage *storage)
 {
-    uint16_t port = (uint16_t)atoi(portstr); 
+    uint16_t port = (uint16_t)atoi(portstr);
     if (port == 0)
     {
         return -1;
     }
-    port = htons(port); 
+    port = htons(port);
 
     memset(storage, 0, sizeof(*storage));
     if (!strcmp(proto, "v4"))

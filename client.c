@@ -9,11 +9,13 @@
 #include <sys/socket.h>
 #include <arpa/inet.h>
 
-#define BUFSZ 4000
+#define BUFSZ 2000
 #define MAX_CLIENTS 15
-#define MAX_MESSAGE_LENGTH 2048
+#define MAX_MESSAGE_LENGTH 2000
 
 int my_id = -1;
+int users[15];
+int break_flag = 1;
 void usage(int argc, char **argv)
 {
     printf("usage: %s <server IP> <server port>\n", argv[0]);
@@ -26,7 +28,7 @@ struct Message
     int IdMsg;
     int IdSender;
     int IdReceiver;
-    char Message[2048];
+    char Message[2000];
 };
 
 void *receive_thread(void *arg)
@@ -40,7 +42,7 @@ void *receive_thread(void *arg)
     {
 
         res = createMessageFromAttributes(buf);
-
+      
         if (res.IdMsg == 6)
         {
             printf("%s\n", res.Message);
@@ -48,10 +50,33 @@ void *receive_thread(void *arg)
             {
                 my_id = res.IdSender;
             }
+            if (res.IdReceiver != -1)
+            {
+                if (users[res.IdSender] == -1)
+                {
+                    users[res.IdSender] == 1;
+                }
+            }
         }
         if (res.IdMsg == 4)
         {
             printf("%s \n", res.Message);
+        }
+        if (res.IdMsg == 2)
+        {
+            users[res.IdSender]=-1;
+            printf("%s \n",res.Message);
+        }
+        if (res.IdMsg == 8)
+        {
+            // printf("%s %d %d\n",res.Message ,my_id,res.IdSender );
+            if (res.IdReceiver == my_id)
+            {
+                printf("%s \n", res.Message);
+                close(server_socket);
+                break_flag = 0;
+                exit(0);
+            }
         }
 
         memset(buf, 0, MAX_MESSAGE_LENGTH);
@@ -67,9 +92,8 @@ int main(int argc, char **argv)
     }
     // int my_id = NULL;
     char buf[BUFSZ];
-
     memset(buf, 0, BUFSZ);
-
+    memset(users, -1, sizeof(users));
     // creating connection
     struct sockaddr_storage storage;
     if (0 != addrparse(argv[1], argv[2], &storage))
@@ -93,7 +117,6 @@ int main(int argc, char **argv)
     msg.IdMsg = 1;
     char *to_send = concatenateMessageAttributes(msg);
 
-
     pthread_t tid;
     if (pthread_create(&tid, NULL, receive_thread, &s) != 0)
     {
@@ -102,7 +125,7 @@ int main(int argc, char **argv)
 
     send(s, to_send, strlen(to_send) + 1, 0);
     free(to_send);
-    while (1)
+    while (break_flag)
     {
 
         memset(buf, 0, BUFSZ);
@@ -112,7 +135,7 @@ int main(int argc, char **argv)
         {
             msg.IdMsg = 4;
             to_send = concatenateMessageAttributes(msg);
-         
+
             size_t count = send(s, to_send, strlen(to_send) + 1, 0);
 
             if (count != strlen(to_send) + 1)
@@ -132,12 +155,12 @@ int main(int argc, char **argv)
             msg.IdSender = my_id;
             msg.IdReceiver = -1;
             to_send = concatenateMessageAttributes(msg);
-          
+
             size_t count = send(s, to_send, strlen(to_send) + 1, 0);
 
             if (count != strlen(to_send) + 1)
             {
-               
+
                 break;
             }
             free(to_send);
@@ -145,7 +168,7 @@ int main(int argc, char **argv)
         else if (!strncmp(buf, "send to", strlen("send to")))
         {
             msg.IdMsg = 6;
-          
+
             char substr[] = "send to ";
             char *pos = strstr(buf, substr);
             pos += strlen(substr);
@@ -155,11 +178,27 @@ int main(int argc, char **argv)
 
             pos += 2;
             strcpy(msg.Message, pos);
-        
+
             msg.IdSender = my_id;
-           
+
             to_send = concatenateMessageAttributes(msg);
-            printf("%d ----\n",msg.IdReceiver);
+
+            size_t count = send(s, to_send, strlen(to_send) + 1, 0);
+
+            if (count != strlen(to_send) + 1)
+            {
+                break;
+            }
+            free(to_send);
+        }
+        else if (!strncmp(buf, "close connection", strlen("close connection")))
+        {
+            msg.IdMsg = 2;
+            msg.IdSender = my_id;
+            msg.IdReceiver = -1;
+            strcpy(msg.Message, "");
+            to_send = concatenateMessageAttributes(msg);
+
             size_t count = send(s, to_send, strlen(to_send) + 1, 0);
 
             if (count != strlen(to_send) + 1)
@@ -169,6 +208,6 @@ int main(int argc, char **argv)
             free(to_send);
         }
     }
-
+    printf("what \n");
     exit(EXIT_SUCCESS);
 }

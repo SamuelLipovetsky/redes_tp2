@@ -15,7 +15,7 @@ struct Message
     int IdMsg;
     int IdSender;
     int IdReceiver;
-    char Message[2048];
+    char Message[2000];
 };
 char *get_current_time()
 {
@@ -39,7 +39,7 @@ char *concatenateMessageAttributes(struct Message message)
     // Concatenate the attributes into the resulting string
     snprintf(concatenatedString, size*sizeof(char), "%d,%d,%d,%s",
              message.IdMsg, message.IdSender, message.IdReceiver, message.Message);
-
+   
     return concatenatedString;
 }
 

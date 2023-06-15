@@ -9,10 +9,10 @@
 #include <sys/socket.h>
 #include <sys/types.h>
 
-#define BUFSZ 2048
+#define BUFSZ 2000
 
 #define MAX_CLIENTS 15
-#define MAX_MESSAGE_LENGTH 2048
+#define MAX_MESSAGE_LENGTH 2000
 
 void usage(int argc, char **argv)
 {
@@ -37,7 +37,7 @@ struct Message
     int IdMsg;
     int IdSender;
     int IdReceiver;
-    char Message[2048];
+    char Message[2000];
 };
 
 void *client_thread(void *data)
@@ -73,8 +73,7 @@ void *client_thread(void *data)
 
         msg = createMessageFromAttributes(buf);
 
-        // int flag_full = 0;
-
+        // request to join
         if (msg.IdMsg == 1)
         {
             answer.IdMsg = 6;
@@ -94,7 +93,7 @@ void *client_thread(void *data)
                     printf("User %02d added \n", i + 1);
 
                     sprintf(answer.Message, "User %02d joined the group!", i + 1);
-                    // position_array = i;
+
                     break;
                 }
             }
@@ -113,8 +112,59 @@ void *client_thread(void *data)
                 }
             }
         }
+        if (msg.IdMsg == 2)
+        {
+           
+            // valid user asked for end of connection
+            if (clients_sockets[msg.IdSender] != -1)
+            {
+             
+                // answer to requester
+                answer.IdSender = -1;
+                answer.IdReceiver = msg.IdSender;
+                answer.IdMsg = 8;
+                strcpy(answer.Message, "Removed Successfully");
+                char *response = concatenateMessageAttributes(answer);
+                int count = send(cdata->csock, response, strlen(response) + 1, 0);
+                if (count != strlen(response) + 1)
+                {
+                    logexit("send");
+                }
+                
+                //removing client
+                
+                strcpy(clients_ip[answer.IdReceiver],"");
+                clients_port[answer.IdReceiver]=-1;
+                clients_sockets[answer.IdReceiver]=-1;
+                free(response);
+                //answer to other users
+                answer.IdSender=msg.IdSender;
+                answer.IdMsg=2;
+                answer.IdReceiver=-1;
+                sprintf(answer.Message,"User %02d left the group!",msg.IdSender+1);
+                char *users_response = concatenateMessageAttributes(answer);
+                printf("%s --\n",users_response);
+                for (int i = 0; i < 15; i++)
+                {
+                    // answers to everyone 
+                    if (clients_port[i] != -1)
+                    {
+                       
+                        int count = send(clients_sockets[i], users_response, strlen(users_response) + 1, 0);
+                        if (count != strlen(users_response) + 1)
+                        {
+                            logexit("send");
+                        }
+                    }
+                }
+            
+                free(users_response);
+                break;
+            }
+        }
         if (msg.IdMsg == 4)
         {
+            answer.IdSender = -1;
             answer.IdMsg = 4;
 
             strcpy(answer.Message, "");
@@ -141,7 +191,7 @@ void *client_thread(void *data)
                 strcpy(answer.Message, " \0");
             }
             char *response = concatenateMessageAttributes(answer);
-            printf("%s\n", response);
+            // printf("%s\n", response);
             int count = send(cdata->csock, response, strlen(response) + 1, 0);
             if (count != strlen(response) + 1)
             {
@@ -150,22 +200,24 @@ void *client_thread(void *data)
         }
         if (msg.IdMsg == 6)
         {
+
             // broadcast
             if (msg.IdReceiver == -1)
-            { 
+            {
+
                 answer.IdSender = msg.IdSender;
                 memset(answer.Message, 0, MAX_MESSAGE_LENGTH);
                 char *time = get_current_time();
-                
-                sprintf(answer.Message, "%s %02d: %s", time, msg.IdSender+1,msg.Message);
-            
+
+                sprintf(answer.Message, "%s %02d: %s", time, msg.IdSender + 1, msg.Message);
+
                 char *generic_response = concatenateMessageAttributes(answer);
 
-                // memset(answer.Message, 0, MAX_MESSAGE_LENGTH);
-                sprintf(answer.Message, "%s -> all: %s ", time,msg.Message);
+                printf("%s \n", answer.Message);
+                memset(answer.Message, 0, MAX_MESSAGE_LENGTH);
+                sprintf(answer.Message, "%s -> all: %s ", time, msg.Message);
                 char *response_to_sender = concatenateMessageAttributes(answer);
-                
-                // printf("%s \n%s\n",generic_response,response_to_sender);
+
                 for (int i = 0; i < 15; i++)
                 {
                     // answers to everyone but the original requester
@@ -177,7 +229,7 @@ void *client_thread(void *data)
                             logexit("send");
                         }
                     }
-                   // answers only to the original requester
+                    // answers only to the original requester
                     if (clients_port[i] != -1 && clients_sockets[i] == cdata->csock)
                     {
                         int count = send(clients_sockets[i], response_to_sender, strlen(response_to_sender) + 1, 0);
@@ -188,21 +240,47 @@ void *client_thread(void *data)
                     }
                 }
                 free(time);
-                
+                free(generic_response);
+                free(response_to_sender);
             }
             else
             {
-                printf("%s", msg.Message);
-                memset(answer.Message, 0, MAX_MESSAGE_LENGTH);
-                // strcpy(answer.Message,)
-                strcpy(answer.Message, msg.Message);
-                answer.IdSender = msg.IdSender;
-                char *response = concatenateMessageAttributes(answer);
-
-                int count = send(clients_sockets[msg.IdReceiver], response, strlen(response) + 1, 0);
-                if (count != strlen(response) + 1)
+                // invalid receiver
+                if (clients_port[msg.IdReceiver] == -1)
                 {
-                    logexit("send");
+                    answer.IdMsg == 7;
+                    sprintf(answer.Message, "03: \"Receiver not found\"");
+                    char *response = concatenateMessageAttributes(answer);
+                    int count = send(cdata->csock, response, strlen(response) + 1, 0);
+                    if (count != strlen(response) + 1)
+                    {
+                        logexit("send");
+                    }
+                    free(response);
+                }
+                else
+                {
+                    memset(answer.Message, 0, MAX_MESSAGE_LENGTH);
+                    char *time = get_current_time();
+
+                    sprintf(answer.Message, "P %s %02d: %s", time, msg.IdSender + 1, msg.Message);
+
+                    char *generic_response = concatenateMessageAttributes(answer);
+
+                    // memset(answer.Message, 0, MAX_MESSAGE_LENGTH);
+                    sprintf(answer.Message, "P %s -> %02d: %s ", time, msg.IdSender, msg.Message);
+                    char *response_to_sender = concatenateMessageAttributes(answer);
+
+                    int count = send(clients_sockets[msg.IdReceiver], generic_response, strlen(generic_response) + 1, 0);
+                    if (count != strlen(generic_response) + 1)
+                    {
+                        logexit("send");
+                    }
+                    count = send(cdata->csock, response_to_sender, strlen(response_to_sender) + 1, 0);
+                    if (count != strlen(response_to_sender) + 1)
+                    {
+                        logexit("send");
+                    }
                 }
             }
         }

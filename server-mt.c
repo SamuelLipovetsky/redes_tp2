@@ -77,7 +77,6 @@ void *client_thread(void *data)
         if (msg.IdMsg == 1)
         {
             //more than 15 clients
-          
             if (client_count == 15)
             {
                 answer.IdMsg=7;
@@ -90,9 +89,10 @@ void *client_thread(void *data)
                 {
                     logexit("send");
                 }
-                // printf("User %02d remove", msg.IdSender + 1);
+           
+                
                 free(response);
-
+                  break;
             }
             else
             {
@@ -149,18 +149,19 @@ void *client_thread(void *data)
                 {
                     logexit("send");
                 }
-                printf("User %02d remove", msg.IdSender + 1);
+                printf("User %02d removed \n", msg.IdSender + 1);
                 // removing client
 
                 strcpy(clients_ip[answer.IdReceiver], "");
                 clients_port[answer.IdReceiver] = -1;
                 clients_sockets[answer.IdReceiver] = -1;
+                client_count -= 1;
                 free(response);
                 // answer to other users
                 answer.IdSender = msg.IdSender;
                 answer.IdMsg = 2;
                 answer.IdReceiver = -1;
-                client_count -= 1;
+               
                 sprintf(answer.Message, "User %02d left the group!", msg.IdSender + 1);
                 char *users_response = concatenateMessageAttributes(answer);
 
@@ -217,6 +218,7 @@ void *client_thread(void *data)
             {
                 logexit("send");
             }
+            free(response);
         }
         if (msg.IdMsg == 6)
         {
@@ -301,10 +303,14 @@ void *client_thread(void *data)
                     {
                         logexit("send");
                     }
+                    free(response_to_sender);
+                    free(time);
+                    free(generic_response);
                 }
             }
         }
     }
+    free(data);
 }
 
 int main(int argc, char **argv)

@@ -66,11 +66,17 @@ void *receive_thread(void *arg)
         {
             users[res.IdSender]=-1;
             printf("%s \n",res.Message);
-              exit(0);
+            //   exit(0);
+        }
+        if (res.IdMsg==7)
+        {
+            printf("%s \n",res.Message);
+            // close(server_socket);
+            exit(0);
         }
         if (res.IdMsg == 8)
         {
-            // printf("%s %d %d\n",res.Message ,my_id,res.IdSender );
+           
             if (res.IdReceiver == my_id)
             {
                 printf("%s \n", res.Message);

@@ -42,44 +42,47 @@ void *receive_thread(void *arg)
     {
 
         res = createMessageFromAttributes(buf);
-      
+
         if (res.IdMsg == 6)
         {
             printf("%s\n", res.Message);
+            // assuming that the first response always contains the ID allocated to this client
             if (my_id == -1)
             {
                 my_id = res.IdSender;
             }
+            // addin other users to the local users list
             if (res.IdReceiver != -1)
             {
                 if (users[res.IdSender] == -1)
                 {
-                    users[res.IdSender] == 1;
+                    users[res.IdSender] = 1;
                 }
             }
         }
         if (res.IdMsg == 4)
         {
-            printf("%s \n", res.Message);
+            printf("%s\n", res.Message);
         }
         if (res.IdMsg == 2)
         {
-            users[res.IdSender]=-1;
-            printf("%s \n",res.Message);
-            //   exit(0);
+            users[res.IdSender] = -1;
+            printf("%s\n", res.Message);
         }
-        if (res.IdMsg==7)
+        if (res.IdMsg == 7)
         {
-            printf("%s \n",res.Message);
-            // close(server_socket);
-            exit(0);
+            printf("%s\n", res.Message);
+            if (strcmp(res.Message, "User limit exceeded")==0)
+            {
+                exit(0);
+            }
         }
         if (res.IdMsg == 8)
         {
-           
+            // request to disconect was sucessfull
             if (res.IdReceiver == my_id)
             {
-                printf("%s \n", res.Message);
+                printf("%s\n", res.Message);
                 close(server_socket);
                 break_flag = 0;
                 exit(0);
@@ -97,7 +100,6 @@ int main(int argc, char **argv)
     {
         usage(argc, argv);
     }
-    // int my_id = NULL;
     char buf[BUFSZ];
     memset(buf, 0, BUFSZ);
     memset(users, -1, sizeof(users));
@@ -121,17 +123,20 @@ int main(int argc, char **argv)
     }
     struct Message msg;
 
-    msg.IdMsg = 1;
-    char *to_send = concatenateMessageAttributes(msg);
-
+    // Creating permanent listening thread
     pthread_t tid;
     if (pthread_create(&tid, NULL, receive_thread, &s) != 0)
     {
         exit(EXIT_FAILURE);
     }
 
+    // sending request to join
+    msg.IdMsg = 1;
+    char *to_send = concatenateMessageAttributes(msg);
     send(s, to_send, strlen(to_send) + 1, 0);
     free(to_send);
+
+    // reading input from user
     while (break_flag)
     {
 
@@ -158,7 +163,14 @@ int main(int argc, char **argv)
             char substr[] = "send all ";
             char *pos = strstr(buf, substr);
             pos += strlen(substr);
-            strcpy(msg.Message, pos);
+
+            const char *start = strchr(pos, '"');
+            const char *end = strchr(start + 1, '"');
+            size_t length = end - start - 1;
+
+            strncpy(msg.Message, start + 1, length);
+            msg.Message[length] = '\0';
+
             msg.IdSender = my_id;
             msg.IdReceiver = -1;
             to_send = concatenateMessageAttributes(msg);
@@ -184,7 +196,12 @@ int main(int argc, char **argv)
             msg.IdReceiver = atoi(temp) - 1;
 
             pos += 2;
-            strcpy(msg.Message, pos);
+            const char *start = strchr(pos, '"');
+            const char *end = strchr(start + 1, '"');
+            size_t length = end - start - 1;
+
+            strncpy(msg.Message, start + 1, length);
+            msg.Message[length] = '\0';
 
             msg.IdSender = my_id;
 
@@ -215,6 +232,6 @@ int main(int argc, char **argv)
             free(to_send);
         }
     }
-    printf("what \n");
+
     exit(EXIT_SUCCESS);
 }

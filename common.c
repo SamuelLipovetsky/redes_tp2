@@ -10,6 +10,7 @@ void logexit(const char *msg)
     perror(msg);
     exit(EXIT_FAILURE);
 }
+
 struct Message
 {
     int IdMsg;
@@ -17,6 +18,8 @@ struct Message
     int IdReceiver;
     char Message[2000];
 };
+
+// Returns allocated string with time in format [HH:MM]
 char *get_current_time()
 {
     time_t t = time(NULL);
@@ -26,23 +29,30 @@ char *get_current_time()
     int minutes = currentTime->tm_min;
 
     // char timeString[8]; // Allocate a string to store the formatted time (including null terminator)
-    char* timeString = malloc(8 * sizeof(char));
+    char *timeString = malloc(8 * sizeof(char));
     sprintf(timeString, "[%02d:%02d]", hours, minutes);
 
     return timeString;
 }
+
+// receives a Message Struct and creates a string with concatenated attributes
 char *concatenateMessageAttributes(struct Message message)
 {
-    int size = (30+ strlen(message.Message));
-    char* concatenatedString= calloc(size, sizeof(char));
-   
+    int size = (30 + strlen(message.Message));
+    char *concatenatedString = calloc(size, sizeof(char));
+
     // Concatenate the attributes into the resulting string
-    snprintf(concatenatedString, size*sizeof(char), "%d,%d,%d,%s",
+    snprintf(concatenatedString, size * sizeof(char), "%d,%d,%d,%s",
              message.IdMsg, message.IdSender, message.IdReceiver, message.Message);
-   
+
     return concatenatedString;
 }
+/*
 
+Creates a Message struct from a string of concatenated atributes
+attributesStrings -> string with format int IdMsg,int IdSender,int IdReceiver,char Message[2000];
+returns a Message struct with the atributes
+*/
 struct Message createMessageFromAttributes(const char *attributesString)
 {
     struct Message message;
@@ -70,7 +80,6 @@ struct Message createMessageFromAttributes(const char *attributesString)
     if (token != NULL)
     {
         strcpy(message.Message, strdup(token));
-        // message.Message = strdup(token);
     }
 
     return message;
